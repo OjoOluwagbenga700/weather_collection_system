@@ -1,0 +1,8 @@
+
+
+.vscode
+*.zip
+.terraform
+*.lock.hcl
+*.tfstate
+*.backup
