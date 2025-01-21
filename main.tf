@@ -1,6 +1,17 @@
-# configured aws provider with proper credentials
+# Add provider configuration with version constraints
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0" # Use version constraints
+    }
+  }
+
+}
+
+# Configure the AWS Provider
 provider "aws" {
-  region = "us-east-2"
+  region = "us-east-2" # Specify your desired AWS region
 }
 # create default vpc if one does not exit
 resource "aws_default_vpc" "default_vpc" {
@@ -134,7 +145,9 @@ resource "aws_instance" "ec2_instance" {
   key_name               = "mynewkeypair"
 
   tags = {
-    Name = "EC2 server"
+    Name        = "weather-dashboard"
+    Environment = "dev"
+    Project     = "weather-data-collection"
   }
 }
 # an empty resource block
@@ -163,32 +176,28 @@ resource "null_resource" "name" {
     destination = "/home/ec2-user/requirements.txt"
   }
 
+
+
   # set permissions and run the python script
   provisioner "remote-exec" {
     inline = [
       "sudo yum update -y",
-      "sudo yum install -y python3",
-      "sudo yum install -y python3-pip",
-
-      # Set up PATH to include local bin directory
-      "echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc",
-      "source ~/.bashrc",
-
-      # Upgrade pip to latest version
-      "python3 -m pip install --user --upgrade pip",
-
-      # Install packages with upgraded pip
-      "echo 'Installing Python packages...'",
-      "python3 -m pip install --user -r ~/requirements.txt",
-
-      # Run the Python script with the updated PATH
-      "echo 'Running Python script...'",
-      "export PATH=$PATH:$HOME/.local/bin",
-      "python3 ~/weather_dashboard.py"
+      "sudo yum install -y python3 python3-pip",
+      # Create a virtual environment
+      "python3 -m venv venv",
+      "source venv/bin/activate",
+      # Install requirements
+      "pip install --no-cache-dir -r requirements.txt",
+      # Add error handling for script execution
+      "python3 weather_dashboard.py || echo 'Script failed' >&2"
     ]
+  }
+  lifecycle {
+    create_before_destroy = true
   }
 
   # wait for ec2 to be created
   depends_on = [aws_instance.ec2_instance, aws_s3_bucket.weather_dashboard_bucket]
 }
+
 
